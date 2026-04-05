@@ -401,13 +401,14 @@ const Proxies: React.FC = () => {
       groupCounts,
       isOpen,
       proxyDisplayMode,
+      t,
       searchValue,
       delaying,
-      cols,
-      allProxies,
-      virtuosoRef,
-      t,
+      mutate,
       setIsOpen,
+      allProxies,
+      cols,
+      virtuosoRef,
       onGroupDelay
     ]
   )

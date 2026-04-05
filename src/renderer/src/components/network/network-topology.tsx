@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as d3 from 'd3'
 import { Button } from '@heroui/react'
-import { IoPauseOutline, IoPlayOutline, IoGitNetworkOutline } from 'react-icons/io5'
 import {
+  IoPauseOutline,
+  IoPlayOutline,
+  IoGitNetworkOutline,
   IoDesktopOutline,
   IoServerOutline,
   IoFunnelOutline
@@ -101,7 +103,8 @@ function buildHierarchy(
         proxies: new Map()
       })
     }
-    const groupEntry = groupsMap.get(group)!
+    const groupEntry = groupsMap.get(group)
+    if (!groupEntry) continue
     groupEntry.data.connections++
     groupEntry.data.traffic += traffic
 
@@ -117,7 +120,8 @@ function buildHierarchy(
         rules: new Map()
       })
     }
-    const proxyEntry = groupEntry.proxies.get(proxy)!
+    const proxyEntry = groupEntry.proxies.get(proxy)
+    if (!proxyEntry) continue
     proxyEntry.data.connections++
     proxyEntry.data.traffic += traffic
 
@@ -133,7 +137,8 @@ function buildHierarchy(
         clients: new Map()
       })
     }
-    const ruleEntry = proxyEntry.rules.get(fullRule)!
+    const ruleEntry = proxyEntry.rules.get(fullRule)
+    if (!ruleEntry) continue
     ruleEntry.data.connections++
     ruleEntry.data.traffic += traffic
 
@@ -149,7 +154,8 @@ function buildHierarchy(
         ports: new Map()
       })
     }
-    const clientEntry = ruleEntry.clients.get(clientIP)!
+    const clientEntry = ruleEntry.clients.get(clientIP)
+    if (!clientEntry) continue
     clientEntry.data.connections++
     clientEntry.data.traffic += traffic
 
@@ -162,7 +168,8 @@ function buildHierarchy(
         traffic: 0
       })
     }
-    const portNode = clientEntry.ports.get(sourcePort)!
+    const portNode = clientEntry.ports.get(sourcePort)
+    if (!portNode) continue
     portNode.connections++
     portNode.traffic += traffic
   }
@@ -179,13 +186,16 @@ function buildHierarchy(
   }
 
   groupsMap.forEach((groupEntry) => {
-    const groupNode: TopologyNodeData = { ...groupEntry.data, children: [] }
+    const groupChildren: TopologyNodeData[] = []
+    const groupNode: TopologyNodeData = { ...groupEntry.data, children: groupChildren }
 
     groupEntry.proxies.forEach((proxyEntry) => {
-      const proxyNode: TopologyNodeData = { ...proxyEntry.data, children: [] }
+      const proxyChildren: TopologyNodeData[] = []
+      const proxyNode: TopologyNodeData = { ...proxyEntry.data, children: proxyChildren }
 
       proxyEntry.rules.forEach((ruleEntry) => {
-        const ruleNode: TopologyNodeData = { ...ruleEntry.data, children: [] }
+        const ruleChildren: TopologyNodeData[] = []
+        const ruleNode: TopologyNodeData = { ...ruleEntry.data, children: ruleChildren }
 
         ruleEntry.clients.forEach((clientEntry) => {
           const portChildren = Array.from(clientEntry.ports.values())
@@ -193,21 +203,21 @@ function buildHierarchy(
           const clientNode: TopologyNodeData = isClientCollapsed
             ? { ...clientEntry.data, _children: portChildren, children: undefined, collapsed: true }
             : { ...clientEntry.data, children: portChildren, collapsed: false }
-          ruleNode.children!.push(clientNode)
+          ruleChildren.push(clientNode)
         })
 
         const isRuleCollapsed = !collapsedNodes.has(`expanded-${ruleEntry.data.id}`)
-        if (isRuleCollapsed && ruleNode.children!.length > 0) {
-          ruleNode._children = ruleNode.children
+        if (isRuleCollapsed && ruleChildren.length > 0) {
+          ruleNode._children = ruleChildren
           ruleNode.children = undefined
           ruleNode.collapsed = true
         } else {
           ruleNode.collapsed = false
         }
-        proxyNode.children!.push(ruleNode)
+        proxyChildren.push(ruleNode)
       })
 
-      groupNode.children!.push(applyCollapse(proxyNode))
+      groupChildren.push(applyCollapse(proxyNode))
     })
 
     rootChildren.push(applyCollapse(groupNode))
@@ -293,29 +303,26 @@ const NetworkTopologyCard: React.FC = () => {
 
   // Toggle collapse
   const toggleCollapseRef = useRef<(nodeId: string, isCollapsed: boolean) => void>(() => {})
-  toggleCollapseRef.current = useCallback(
-    (nodeId: string, isCurrentlyCollapsed: boolean) => {
-      const expandedKey = `expanded-${nodeId}`
-      setCollapsedNodes((prev) => {
-        const next = new Set(prev)
-        if (isCurrentlyCollapsed) {
-          if (nodeId.startsWith('rule-') || nodeId.startsWith('client-')) {
-            next.add(expandedKey)
-          } else {
-            next.delete(nodeId)
-          }
+  toggleCollapseRef.current = useCallback((nodeId: string, isCurrentlyCollapsed: boolean) => {
+    const expandedKey = `expanded-${nodeId}`
+    setCollapsedNodes((prev) => {
+      const next = new Set(prev)
+      if (isCurrentlyCollapsed) {
+        if (nodeId.startsWith('rule-') || nodeId.startsWith('client-')) {
+          next.add(expandedKey)
         } else {
-          if (nodeId.startsWith('rule-') || nodeId.startsWith('client-')) {
-            next.delete(expandedKey)
-          } else {
-            next.add(nodeId)
-          }
+          next.delete(nodeId)
         }
-        return next
-      })
-    },
-    []
-  )
+      } else {
+        if (nodeId.startsWith('rule-') || nodeId.startsWith('client-')) {
+          next.delete(expandedKey)
+        } else {
+          next.add(nodeId)
+        }
+      }
+      return next
+    })
+  }, [])
 
   // D3 render
   useEffect(() => {
@@ -357,8 +364,7 @@ const NetworkTopologyCard: React.FC = () => {
       }
     }
 
-    const getNodeWidth = (d: d3.HierarchyNode<TopologyNodeData>) =>
-      nodeWidths.get(d.data.id) ?? 80
+    const getNodeWidth = (d: d3.HierarchyNode<TopologyNodeData>) => nodeWidths.get(d.data.id) ?? 80
 
     // Max width per depth
     const maxWidthPerLevel = new Map<number, number>()
@@ -487,7 +493,7 @@ const NetworkTopologyCard: React.FC = () => {
       .filter((d) =>
         Boolean(
           (d.data.children && d.data.children.length > 0) ||
-            (d.data._children && d.data._children.length > 0)
+          (d.data._children && d.data._children.length > 0)
         )
       )
       .append('text')
@@ -513,8 +519,7 @@ const NetworkTopologyCard: React.FC = () => {
     nodes
       .append('title')
       .text(
-        (d) =>
-          `${d.data.name}\n${d.data.connections} connections\n${calcTraffic(d.data.traffic)}`
+        (d) => `${d.data.name}\n${d.data.connections} connections\n${calcTraffic(d.data.traffic)}`
       )
   }, [hierarchyData, resolvedTheme])
 
@@ -555,13 +560,21 @@ const NetworkTopologyCard: React.FC = () => {
         <div className="flex items-center gap-2">
           {/* Stats */}
           <div className="hidden flex-wrap gap-x-2 text-[12px] text-foreground/50 sm:flex">
-            <span>{stats.clientCount} {t('network.topology.clients')}</span>
+            <span>
+              {stats.clientCount} {t('network.topology.clients')}
+            </span>
             <span>·</span>
-            <span>{stats.ruleCount} {t('network.topology.rules')}</span>
+            <span>
+              {stats.ruleCount} {t('network.topology.rules')}
+            </span>
             <span>·</span>
-            <span>{stats.groupCount} {t('network.topology.groups')}</span>
+            <span>
+              {stats.groupCount} {t('network.topology.groups')}
+            </span>
             <span>·</span>
-            <span>{stats.proxyCount} {t('network.topology.nodes')}</span>
+            <span>
+              {stats.proxyCount} {t('network.topology.nodes')}
+            </span>
             <span>·</span>
             <span>{calcTraffic(stats.totalTraffic)}</span>
           </div>

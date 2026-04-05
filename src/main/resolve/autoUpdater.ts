@@ -117,19 +117,17 @@ export async function downloadAndInstallUpdate(version: string): Promise<void> {
         { proxy, responseType: 'text' }
       )
       const expectedHash = (sha256Res.data as string).trim().split(/\s+/)[0]
-      const res = await tryDownload(
-        buildDownloadUrls(`${githubBase}${file}`, githubProxy),
-        {
-          responseType: 'arraybuffer',
-          timeout: 0,
-          proxy,
-          headers: { 'Content-Type': 'application/octet-stream' },
-          onProgress: (loaded: number, total: number) => {
-            mainWindow?.webContents.send('updateDownloadProgress', {
-              status: 'downloading',
-              percent: Math.round((loaded / total) * 100)
-            })
-          }
+      const res = await tryDownload(buildDownloadUrls(`${githubBase}${file}`, githubProxy), {
+        responseType: 'arraybuffer',
+        timeout: 0,
+        proxy,
+        headers: { 'Content-Type': 'application/octet-stream' },
+        onProgress: (loaded: number, total: number) => {
+          mainWindow?.webContents.send('updateDownloadProgress', {
+            status: 'downloading',
+            percent: Math.round((loaded / total) * 100)
+          })
+        }
       })
       mainWindow?.webContents.send('updateDownloadProgress', { status: 'verifying' })
       const fileBuffer = Buffer.from(res.data as ArrayBuffer)

@@ -6,10 +6,10 @@ import { join } from 'path'
 import { createGunzip } from 'zlib'
 import AdmZip from 'adm-zip'
 import { stopCore } from '../core/manager'
+import { getAppConfig } from '../config'
 import { mihomoCoreDir } from './dirs'
 import * as chromeRequest from './chromeRequest'
 import { createLogger } from './logger'
-import { getAppConfig } from '../config'
 
 const log = createLogger('GitHub')
 

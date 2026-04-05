@@ -258,6 +258,8 @@ interface IAppConfig {
   connectionTableColumnWidths?: Record<string, number>
   connectionTableSortColumn?: string
   connectionTableSortDirection?: 'asc' | 'desc'
+  displayIcon?: boolean
+  displayAppName?: boolean
   spinFloatingIcon?: boolean
   disableTray?: boolean
   swapTrayClick?: boolean
