@@ -183,6 +183,19 @@ async function resolveSidecar(binInfo) {
   const sidecarPath = path.join(sidecarDir, targetFile)
 
   fs.mkdirSync(sidecarDir, { recursive: true })
+
+  // Use locally prebuilt kernel if present (see extra/prebuilt-kernels/)
+  const localPrebuilt = path.join(cwd, 'extra', 'prebuilt-kernels', exeFile)
+  if (fs.existsSync(localPrebuilt)) {
+    if (fs.existsSync(sidecarPath)) fs.rmSync(sidecarPath)
+    fs.copyFileSync(localPrebuilt, sidecarPath)
+    if (platform !== 'win32') {
+      execSync(`chmod 755 "${sidecarPath}"`)
+    }
+    console.log(`[INFO]: "${name}" copied from local prebuilt: ${localPrebuilt}`)
+    return
+  }
+
   if (fs.existsSync(sidecarPath)) {
     fs.rmSync(sidecarPath)
   }
